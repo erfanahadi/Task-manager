@@ -217,3 +217,47 @@ class TaskMoveTestCase(APITestCase):
         )
         self.assertNotEqual(response.status_code, 204)
         self.assertEqual(Task.objects.count(), 1)
+
+    # test updating the task
+    def test_updating_the_task(self):
+        self.task2 = Task.objects.create(
+            title='Test Task',
+            description='Test Description',
+            creator=self.user,
+        )
+        self.task2.refresh_from_db()
+        self.token = Token.objects.create(user=self.user)
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f'Token {self.token.key}'
+        )
+        response = self.client.patch(
+            reverse('task-detail', args=[self.task2.id]),
+            {'title': 'Updated Task', 'description': 'Updated Description'},
+            format='json'
+        )
+        self.task2.refresh_from_db()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.task2.title, 'Updated Task')
+        self.assertEqual(self.task2.description, 'Updated Description')
+
+    # test only the creator can update the task
+    def test_only_the_creator_can_update_the_task(self):
+
+        response = self.client.patch(
+            reverse('task-detail', args=[self.task.id]),
+            {'title': 'Updated Task', 'description': 'Updated Description'},
+            format='json'
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(self.task.title, 'Test Task')
+        self.assertEqual(self.task.description, 'Test Description')
+
+    # test that creator of a task cannot assign the task to another user
+    def test_creator_cannot_assign_the_task_to_another_user(self):
+        response = self.client.patch(
+            reverse('task-detail', args=[self.task.id]),
+            {'assignee': self.user2.id},
+            format='json'
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(self.task.assignee, None)

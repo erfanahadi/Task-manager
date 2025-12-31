@@ -13,6 +13,7 @@ from rest_framework.generics import CreateAPIView
 from rest_framework.permissions import IsAuthenticated
 from .permissions import IsTaskOwner
 from django.db import transaction
+from drf_spectacular.utils import extend_schema, OpenApiResponse
 
 
 class ListTaskView(APIView):
@@ -22,6 +23,14 @@ class ListTaskView(APIView):
 
     serializer_class = TaskSerializer
 
+    @extend_schema(
+        responses={
+            200: OpenApiResponse(
+                description="Tasks grouped by column",
+                response=TaskSerializer(many=True),
+            )
+        }
+    )
     def get(self, request):
         tasks = Task.objects.all()
         columns = ["To Do", "In Progress", "Completed"]
@@ -47,11 +56,16 @@ class TaskDetailView(APIView):
         self.check_object_permissions(self.request, task)
         return task
 
+    @extend_schema(responses=TaskSerializer)
     def get(self, request, pk):
         task = self.get_object(pk=pk)
         serializer = TaskSerializer(task)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    @extend_schema(
+        request=TaskSerializer,
+        responses=TaskSerializer,
+    )
     def patch(self, request, pk):
         task = self.get_object(pk=pk)
         serializer = TaskSerializer(task, data=request.data, partial=True)
@@ -60,6 +74,12 @@ class TaskDetailView(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    @extend_schema(
+        responses={
+            204: OpenApiResponse(description="Task deleted"),
+            403: OpenApiResponse(description="Not allowed"),
+        }
+    )
     def delete(self, request, pk):
         task = self.get_object(pk=pk)
         task.delete()
@@ -70,18 +90,37 @@ class TaskCreateView(CreateAPIView):
     """
     Create a new task.
     """
+
     queryset = Task.objects.all()
     serializer_class = TaskCreateSerializer
     permission_classes = [IsAuthenticated]
 
+    def get_serializer_context(self):
+        return {"request": self.request}
+
+    @extend_schema(
+        request=TaskCreateSerializer,
+        responses={201: TaskSerializer},
+    )
+    def post(self, request, *args, **kwargs):
+        return super().post(request, *args, **kwargs)
+
 
 class StartTaskView(APIView):
     """
-    Start a task by a user. This user is assigned to the task. the task is moved to "In Progress"
+    Send id of the task to start a task. This user is assigned to the task. the task is moved to "In Progress"
     """
+
     permission_classes = [IsAuthenticated]
     serializer_class = TaskSerializer
 
+    @extend_schema(
+        request=None,
+        responses={
+            200: TaskSerializer,
+            400: OpenApiResponse(description="Invalid task state"),
+        },
+    )
     @transaction.atomic
     def post(self, request, pk):
         task = Task.objects.select_for_update().get(pk=pk)
@@ -111,8 +150,18 @@ class TaskProgressUpdateView(APIView):
     """
     Update the progress of a task from 1 to 100. This endpoint is only accessible to the assignee.
     """
+
     permission_classes = [IsAuthenticated]
     serializer_class = TaskProgressSerializer
+
+    @extend_schema(
+        request=TaskProgressSerializer,
+        responses={
+            200: TaskProgressSerializer,
+            400: OpenApiResponse(description="Invalid progress value"),
+            403: OpenApiResponse(description="Only assignee allowed"),
+        },
+    )
     @transaction.atomic
     def patch(self, request, pk):
         task = get_object_or_404(Task.objects.select_for_update(), pk=pk)
@@ -135,7 +184,7 @@ class TaskProgressUpdateView(APIView):
 
         if progress == 100:
             task.column = "Completed"
-        if 1<= progress < 100:
+        if 1 <= progress < 100:
             task.column = "In Progress"
         if progress == 0:
             task.column = "To Do"
@@ -157,9 +206,17 @@ class TaskMoveView(APIView):
     Move a task from in progress to completed. This endpoint is only accessible to the creator or assignee
     If the task is moved to completed, the progress is set to 100.
     """
+
     permission_classes = [IsAuthenticated]
     serializer_class = TaskMoveSerializer
 
+    @extend_schema(
+        request=TaskMoveSerializer,
+        responses={
+            200: TaskMoveSerializer,
+            403: OpenApiResponse(description="Not allowed to move task"),
+        },
+    )
     @transaction.atomic
     def patch(self, request, pk):
         task = get_object_or_404(Task.objects.select_for_update(), pk=pk)

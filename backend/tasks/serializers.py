@@ -2,27 +2,29 @@ from rest_framework import serializers
 from .models import Task
 from django.contrib.auth.models import User
 
+
 class TaskSerializer(serializers.ModelSerializer):
-    creator_name = serializers.ReadOnlyField(source='creator.username')
-    assignee_name = serializers.ReadOnlyField(source='assignee.username')
+    creator_name = serializers.ReadOnlyField(source="creator.username")
+    assignee_name = serializers.ReadOnlyField(source="assignee.username")
+
     class Meta:
         model = Task
-        fields = '__all__'
+        fields = "__all__"
+
 
 class TaskCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Task
-        fields = ['id', 'title', 'description', 'creator', 'assignee', 'progress', 'column']
-        read_only_fields = ['creator', 'progress', 'column']
+        fields = ["title", "description"]
 
     def create(self, validated_data):
-        request = self.context['request']
-        return Task.objects.create(
-            creator=request.user,
-            progress=0,
-            column=Task.COLUMN_TODO,
-            **validated_data
-        )
+        # automatically set creator and leave assignee as None
+        validated_data["creator"] = self.context["request"].user
+        validated_data["assignee"] = None
+        validated_data["progress"] = 0
+        validated_data["column"] = "To Do"
+        return super().create(validated_data)
+
 
 class TaskProgressSerializer(serializers.ModelSerializer):
     class Meta:
@@ -33,6 +35,7 @@ class TaskProgressSerializer(serializers.ModelSerializer):
         if not 1 <= value <= 100:
             raise serializers.ValidationError("Progress must be between 1 and 100.")
         return value
+
 
 class TaskMoveSerializer(serializers.ModelSerializer):
     class Meta:
