@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Create Task</h2>
+<form method="post">
+    {% csrf_token %}
+    <div class="form-group">
+        <label for="{{ form.title.id_for_label }}">Title</label>
+        {{ form.title }}
+    </div>
+    <div class="form-group">
+        <label for="{{ form.description.id_for_label }}">Description</label>
+        {{ form.description }}
+    </div>
+    <div class="form-group">
+        <label for="{{ form.assignee.id_for_label }}">Assignee</label>
+        {{ form.assignee }}
+    </div>
+    <div class="form-group">
+        <label for="{{ form.progress.id_for_label }}">Progress (%)</label>
+        {{ form.progress }}
+        <small>Enter a number between 0 and 100</small>
+    </div>
+    <button type="submit" class="btn btn-primary">Create Task</button>
+</form>
+{% endblock %}

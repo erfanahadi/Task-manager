@@ -1,0 +1,25 @@
+<h1>Task Board</h1>
+<div>
+  <h2>To Do</h2>
+  {% for task in tasks %}
+    {% if task.column == 'To Do' %}
+      <p>{{ task.title }} - {{ task.progress_percentage }}%</p>
+    {% endif %}
+  {% endfor %}
+</div>
+<div>
+  <h2>In Progress</h2>
+  {% for task in tasks %}
+    {% if task.column == 'In Progress' %}
+      <p>{{ task.title }} - {{ task.progress_percentage }}%</p>
+    {% endif %}
+  {% endfor %}
+</div>
+<div>
+  <h2>Completed</h2>
+  {% for task in tasks %}
+    {% if task.column == 'Completed' %}
+      <p>{{ task.title }} - {{ task.progress_percentage }}%</p>
+    {% endif %}
+  {% endfor %}
+</div>
