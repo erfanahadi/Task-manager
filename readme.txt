@@ -20,7 +20,7 @@ You only need:
 
 Getting Started
 1. Clone the repository:
-git clone <repository-url>
+git clone https://github.com/erfanahadi/Task-manager.git
 cd <project-root>
 2. Build and run the project:
 docker compose up –build
